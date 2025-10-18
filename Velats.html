@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎀 Velat Attendance Dashboard v2.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(to bottom right,#ffe1ec,#ffd6e7,#fff5f9);
+  color:#5a2c45;
+}
+header{
+  background:#ff8fb6;
+  padding:15px 30px;
+  color:#fff;
+  font-size:1.6em;
+  font-weight:600;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:0 4px 10px rgba(255,136,176,0.3);
+}
+header span{
+  font-size:0.8em;
+  background:#ff6b9a;
+  padding:3px 8px;
+  border-radius:10px;
+}
+.container{
+  display:flex;
+  justify-content:center;
+  gap:25px;
+  padding:25px;
+  flex-wrap:wrap;
+}
+.card{
+  background:#fff;
+  border-radius:20px;
+  box-shadow:0 4px 12px rgba(255,150,180,0.3);
+  padding:25px;
+  flex:1;
+  min-width:320px;
+  max-width:550px;
+}
+h2{
+  color:#5a2c45;
+  margin-top:0;
+}
+nav{
+  display:flex;
+  gap:10px;
+  margin-bottom:15px;
+  flex-wrap:wrap;
+}
+nav button{
+  flex:1;
+  border:none;
+  background:#ffd0df;
+  padding:10px 15px;
+  border-radius:25px;
+  font-weight:600;
+  color:#5a2c45;
+  cursor:pointer;
+  transition:.2s;
+}
+nav button.active,nav button:hover{
+  background:#ff8fb6;
+  color:#fff;
+}
+section{display:none;}
+section.active{display:block;}
+button.action{
+  background:#ff8fb6;
+  border:none;
+  color:#fff;
+  font-weight:600;
+  padding:10px 20px;
+  border-radius:20px;
+  margin:5px;
+  cursor:pointer;
+  transition:.2s;
+}
+button.action:hover{background:#ff6b9a}
+#reader{
+  width:100%;
+  max-width:380px;
+  margin:auto;
+  border-radius:15px;
+  overflow:hidden;
+  box-shadow:0 0 10px rgba(255,160,185,0.4);
+}
+.controls{text-align:center;margin-top:10px;}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:15px;
+}
+th,td{
+  border:1px solid #ffd6e7;
+  padding:8px;
+  text-align:center;
+}
+th{
+  background:#ff8fb6;
+  color:#fff;
+}
+.toast{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#ff6b9a;
+  color:#fff;
+  padding:12px 25px;
+  border-radius:25px;
+  box-shadow:0 4px 10px rgba(255,107,154,0.4);
+  display:none;
+  animation:fadein .3s, fadeout .3s 2.3s;
+}
+@keyframes fadein{from{opacity:0;bottom:10px;}to{opacity:1;bottom:20px;}}
+@keyframes fadeout{from{opacity:1;bottom:20px;}to{opacity:0;bottom:10px;}}
+input{
+  padding:8px;
+  border:1px solid #ffbcd3;
+  border-radius:10px;
+  margin:5px;
+  width:90%;
+}
+footer{
+  text-align:center;
+  padding:10px;
+  font-size:0.8em;
+  color:#b87b93;
+}
+@media(max-width:600px){
+  header{font-size:1.2em;padding:10px 15px;}
+}
+</style>
+</head>
+<body>
+<header>
+  🎀 Velat Attendance Dashboard
+  <span>v2.0</span>
+</header>
+
+<div class="container">
+  <div class="card left">
+    <nav>
+      <button class="active" onclick="showSection('home')">🏠 Home</button>
+      <button onclick="showSection('scanner')">📷 Scanner</button>
+      <button onclick="showSection('generator')">🎫 QR Generator</button>
+    </nav>
+
+    <section id="home" class="active">
+      <h2>📋 Dashboard</h2>
+      <p>Welcome — use the buttons to switch between pages.</p>
+      <div class="controls">
+        <button class="action" onclick="showSection('scanner')">Start Scanning</button>
+        <button class="action" onclick="showSection('generator')">Generate QRs</button>
+      </div>
+      <p id="summary">Scanned today: 0</p>
+    </section>
+
+    <section id="scanner">
+      <h2>📸 QR Attendance Scanner</h2>
+      <div id="reader"></div>
+      <div class="controls">
+        <button class="action" id="startScan">💗 Start</button>
+        <button class="action" id="stopScan" disabled>🩶 Stop</button>
+      </div>
+      <p id="scanResult"></p>
+    </section>
+
+    <section id="generator">
+      <h2>💝 Generate Student QR</h2>
+      <input type="text" id="studentId" placeholder="Student ID">
+      <input type="text" id="studentName" placeholder="Full Name">
+      <div class="controls">
+        <button class="action" id="genQrBtn">Generate</button>
+        <button class="action" id="downloadQrBtn">💾 Download QR</button>
+      </div>
+      <canvas id="qrCanvas"></canvas>
+    </section>
+  </div>
+
+  <div class="card right">
+    <h2>Attendance Manager</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Name</th><th>Date</th><th>Time</th><th>Status</th></tr>
+      </thead>
+      <tbody id="attendanceTable"></tbody>
+    </table>
+    <div class="controls">
+      <button class="action" id="exportBtn">📁 Export</button>
+      <button class="action" id="clearBtn">🗑️ Clear</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">✅ Marked Present</div>
+
+<footer>© 2025 Velat Attendance. All Rights Reserved.</footer>
+
+<script>
+let currentSection='home';
+const sections=document.querySelectorAll('section');
+const navBtns=document.querySelectorAll('nav button');
+function showSection(id){
+  sections.forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  navBtns.forEach(b=>b.classList.remove('active'));
+  [...navBtns].find(b=>b.textContent.includes(id.charAt(0).toUpperCase())).classList.add('active');
+}
+
+let qrScanner;
+const reader=document.getElementById("reader");
+const startBtn=document.getElementById("startScan");
+const stopBtn=document.getElementById("stopScan");
+const resultTxt=document.getElementById("scanResult");
+let attendance=JSON.parse(localStorage.getItem("attendance")||"[]");
+const toast=document.getElementById("toast");
+const sound=new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+
+function showToast(msg){
+  toast.textContent=msg;
+  toast.style.display="block";
+  sound.play();
+  setTimeout(()=>toast.style.display="none",2500);
+}
+function renderTable(){
+  const t=document.getElementById("attendanceTable");
+  t.innerHTML="";
+  attendance.forEach(row=>{
+    t.innerHTML+=`<tr><td>${row.id}</td><td>${row.name}</td><td>${row.date}</td><td>${row.time}</td><td>${row.status}</td></tr>`;
+  });
+  document.getElementById("summary").textContent=`Scanned today: ${attendance.length}`;
+}
+renderTable();
+
+startBtn.onclick=()=>{
+  qrScanner=new Html5Qrcode("reader");
+  qrScanner.start({facingMode:"environment"},{fps:10,qrbox:250},
+    data=>{handleScan(data);}
+  );
+  startBtn.disabled=true;
+  stopBtn.disabled=false;
+};
+stopBtn.onclick=()=>{
+  if(qrScanner){
+    qrScanner.stop().then(()=>{
+      startBtn.disabled=false;
+      stopBtn.disabled=true;
+    });
+  }
+};
+function handleScan(data){
+  const [id,name]=data.split(",");
+  const date=new Date().toLocaleDateString();
+  const time=new Date().toLocaleTimeString();
+  if(!attendance.some(a=>a.id===id&&a.date===date)){
+    attendance.push({id,name,date,time,status:"Present"});
+    localStorage.setItem("attendance",JSON.stringify(attendance));
+    renderTable();
+    showToast(`✅ Marked Present: ${name}`);
+  }else showToast(`⚠️ Already marked today`);
+}
+document.getElementById("clearBtn").onclick=()=>{
+  if(confirm("Clear all attendance?")){
+    attendance=[];
+    localStorage.removeItem("attendance");
+    renderTable();
+  }
+};
+document.getElementById("exportBtn").onclick=()=>{
+  const ws=XLSX.utils.json_to_sheet(attendance);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Attendance");
+  XLSX.writeFile(wb,"Velat_Attendance.xlsx");
+};
+document.getElementById("genQrBtn").onclick=()=>{
+  const id=document.getElementById("studentId").value.trim();
+  const name=document.getElementById("studentName").value.trim();
+  if(!id||!name)return alert("Enter both ID and Name");
+  const data=`${id},${name}`;
+  QRCode.toCanvas(document.getElementById("qrCanvas"),data,{width:200});
+};
+const downloadBtn=document.getElementById("downloadQrBtn");
+downloadBtn.onclick=()=>{
+  const canvas=document.getElementById("qrCanvas");
+  const id=document.getElementById("studentId").value.trim();
+  const name=document.getElementById("studentName").value.trim();
+  if(!canvas.toDataURL())return alert("Generate a QR first!");
+  const link=document.createElement("a");
+  link.href=canvas.toDataURL("image/png");
+  link.download=`QR_${name||id||"student"}.png`;
+  link.click();
+};
+</script>
+</body>
+</html>
